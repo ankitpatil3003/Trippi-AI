@@ -87,7 +87,12 @@ async def researcher_node(state: GraphState) -> dict[str, Any]:
         trip.pois = pois
         trip.restaurant_candidates = restaurants
         trip_store.save(trip)
-    status = await _set_status(trip_id, "researcher", "done", f"{len(pois)} POIs, {len(restaurants)} restaurants")
+    status = await _set_status(
+        trip_id,
+        "researcher",
+        "done",
+        f"{len(pois)} POIs, {len(restaurants)} restaurants",
+    )
     return {
         "pois": [p.model_dump() for p in pois],
         "restaurant_candidates": [r.model_dump() for r in restaurants],

@@ -3,9 +3,9 @@ from __future__ import annotations
 from app.agents.date_shift import daterange
 from app.memory.fusion import filter_by_setting
 from app.schemas.trip import (
+    POI,
     ItineraryBlock,
     ItineraryDay,
-    POI,
     SettingKind,
     WeatherClass,
     WeatherDay,
