@@ -13,7 +13,7 @@
 $ErrorActionPreference = "Continue"
 
 Write-Host ""
-Write-Host "=== Trippi-AI / Weather MCP — Render deploy checklist ===" -ForegroundColor Cyan
+Write-Host "=== Trippi-AI / Weather MCP: Render deploy checklist ===" -ForegroundColor Cyan
 Write-Host "Generated for local use when API automation is blocked (no RENDER_API_KEY)."
 Write-Host ""
 
@@ -33,7 +33,7 @@ Write-Host "  1. New + → Blueprint → MCP-Weather-Agent-with-LangChain → br
 Write-Host "  2. Confirm root render.yaml (service weather-mcp, Docker, rootDir mcp-server)"
 Write-Host "  3. Apply / create"
 Write-Host "  4. Environment → set:"
-Write-Host "       OPENWEATHER_API_KEY   (required; from local mcp-server/.env — do not commit)"
+Write-Host "       OPENWEATHER_API_KEY   (required; from local mcp-server/.env; do not commit)"
 Write-Host "  5. Deploy latest → copy URL e.g. https://weather-mcp-xxxx.onrender.com"
 Write-Host "  6. Smoke: GET https://<weather-host>/mcp"
 Write-Host ""
@@ -77,7 +77,7 @@ foreach ($cmd in @("render", "flyctl", "railway")) {
 if ($env:RENDER_API_KEY) {
   Write-Host "  RENDER_API_KEY: set (value not printed)"
 } else {
-  Write-Host "  RENDER_API_KEY: not set — use dashboard or set User env and restart shell"
+  Write-Host "  RENDER_API_KEY: not set; use dashboard or set User env and restart shell"
 }
 Write-Host ""
 Write-Host "Docs: docs/deploy/DEPLOYMENT_STATUS.md , docs/deploy/RENDER_VERCEL.md"
