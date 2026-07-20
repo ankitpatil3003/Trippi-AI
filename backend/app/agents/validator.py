@@ -6,7 +6,13 @@ from app.schemas.trip import TripError, TripRecord
 def validate_and_patch(trip: TripRecord) -> TripRecord:
     errors: list[TripError] = []
     if not trip.constraints:
-        errors.append(TripError(code="missing_constraints", message="Trip constraints missing.", retryable=False))
+        errors.append(
+            TripError(
+                code="missing_constraints",
+                message="Trip constraints missing.",
+                retryable=False,
+            )
+        )
     if not trip.itinerary:
         errors.append(TripError(code="empty_itinerary", message="Itinerary is empty.", retryable=True))
         # Auto patch: one buffer day if constraints exist
