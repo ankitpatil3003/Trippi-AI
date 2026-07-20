@@ -5,8 +5,8 @@
 | Surface | URL / status |
 |---------|----------------|
 | **Vercel frontend (production)** | **https://trippi-ai-seven.vercel.app** |
-| Render Weather MCP | **not deployed** — needs dashboard (no `RENDER_API_KEY`) |
-| Render Trippi API | **not deployed** — needs dashboard (no `RENDER_API_KEY`) |
+| Render Weather MCP | **not deployed**; needs dashboard (no `RENDER_API_KEY`) |
+| Render Trippi API | **not deployed**; needs dashboard (no `RENDER_API_KEY`) |
 
 **Frontend note:** Once the Trippi API is live on Render, set Vercel env **`VITE_API_URL`** to the API base URL (e.g. `https://trippi-ai-api-xxxx.onrender.com`) and redeploy the frontend. Until then the UI may not reach a cloud API.
 
@@ -43,7 +43,7 @@ Helper: `scripts/deploy-render-checklist.ps1` prints exact Render dashboard step
 
 1. Weather MCP on Render  
 2. Trippi-AI API on Render  
-3. Trippi-AI frontend on Vercel — **done** at https://trippi-ai-seven.vercel.app (still needs `VITE_API_URL` when API is live)
+3. Trippi-AI frontend on Vercel: **done** at https://trippi-ai-seven.vercel.app (still needs `VITE_API_URL` when API is live)
 
 ---
 
@@ -105,7 +105,7 @@ If recreating or adjusting the project:
 4. **Root Directory** → **Edit** → `frontend`.
 5. Framework: Vite (auto). Build `npm run build`, output `dist`.
 6. **Environment Variables**:
-   - `VITE_API_URL` = `https://<api-host>` (Trippi Render URL, no path) — **set once API is live**.
+   - `VITE_API_URL` = `https://<api-host>` (Trippi Render URL, no path); **set once API is live**.
 7. **Deploy**.
 8. Copy production URL → go back to Render **trippi-ai-api** → add that origin to **`CORS_ORIGINS`** → redeploy API if needed.
 9. Open the Vercel URL and run a short plan smoke in the UI.
