@@ -1,0 +1,5 @@
+[
+  {"query": "indoor art museums", "city": "New York", "relevant_ids": ["poi_met", "poi_moma", "poi_gum"]},
+  {"query": "outdoor views and walks", "city": "New York", "relevant_ids": ["poi_central_park", "poi_brooklyn_bridge", "poi_high_line", "poi_statue"]},
+  {"query": "family science museum", "city": "New York", "relevant_ids": ["poi_amnh"]}
+]
