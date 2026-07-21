@@ -39,7 +39,35 @@ npm run dev
 
 Open http://localhost:5173. With `MCP_STUB=true` the API does not need a live MCP.
 
-## Pointing at a real Weather MCP
+## LLM providers
+
+Set `LLM_PROVIDER` in `backend/.env`:
+
+| Provider | Env | Suggested model | Notes |
+|----------|-----|-----------------|-------|
+| `heuristic` | none | n/a | No key; rule based parsing (works offline) |
+| `openrouter` | `OPENROUTER_API_KEY` | `openrouter/free` | Free router; best zero cost demo path |
+| `anthropic` | `ANTHROPIC_API_KEY` | `claude-haiku-4-5` | Fast, cheap, strong extraction |
+| `openai` | `OPENAI_API_KEY` | `gpt-4o-mini` | Optional fallback |
+
+Optional override: `LLM_MODEL=...` (for example `meta-llama/llama-3.3-70b-instruct:free`).
+
+Example OpenRouter:
+
+```env
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=openrouter/free
+```
+
+Example Anthropic:
+
+```env
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-haiku-4-5
+```
+
 
 1. Deploy `mcp-server` to Render first (see weather repo `docs/DEPLOY_RENDER.md`).
 2. Set in `backend/.env`:
