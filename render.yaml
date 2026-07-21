@@ -10,10 +10,18 @@ services:
         sync: false
       - key: MCP_STUB
         value: "false"
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-4-5
       - key: OPENAI_API_KEY
         sync: false
-      - key: LLM_PROVIDER
-        value: openai
       - key: DATE_SHIFT_RAIN_RATIO
         value: "0.6"
       - key: CORS_ORIGINS

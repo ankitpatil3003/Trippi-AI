@@ -23,5 +23,7 @@ app.include_router(trips_router)
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok", "service": settings.app_name}
+async def health() -> dict:
+    from app.llm.factory import describe_llm
+
+    return {"status": "ok", "service": settings.app_name, "llm": describe_llm()}

@@ -11,9 +11,23 @@ class Settings(BaseSettings):
     api_port: int = 8080
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # LLM: heuristic | openrouter | anthropic | openai
+    # Recommended free path: LLM_PROVIDER=openrouter + OPENROUTER_API_KEY + openrouter/free
+    # Recommended cheap quality: LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY + claude-haiku
+    llm_provider: str = "heuristic"
+    llm_model: str = ""
+
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
-    llm_provider: str = "openai"
+
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5"
+
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openrouter/free"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_site_url: str = "https://github.com/ankitpatil3003/Trippi-AI"
+
     aws_region: str = "us-east-1"
     bedrock_model_id: str = ""
 
