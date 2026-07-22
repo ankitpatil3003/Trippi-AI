@@ -214,5 +214,14 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Streamlit
-.streamlit/secrets.toml
+node_modules/
+dist/
+.venv/
+backend/.venv/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+frontend/playwright-report/
+frontend/test-results/
+evals/retrieval/results.json
+.DS_Store

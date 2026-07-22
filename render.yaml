@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: trippi-ai-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: MCP_SERVER_URL
+        sync: false
+      - key: MCP_STUB
+        value: "false"
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-4-5
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATE_SHIFT_RAIN_RATIO
+        value: "0.6"
+      - key: CORS_ORIGINS
+        sync: false
