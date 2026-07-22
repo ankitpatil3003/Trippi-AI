@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date, timedelta
+from typing import Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -21,51 +23,105 @@ def classify_day(precip_probability: float, summary: str) -> WeatherClass:
     return WeatherClass.CLEAR
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8), reraise=True)
-async def _mcp_call_forecast(city: str, days: int) -> list[dict]:
-    """Best effort MCP tool call via HTTP JSON-RPC style or langchain adapter."""
-    settings = get_settings()
-    import httpx
+def _coerce_tool_payload(result: Any) -> Any:
+    """Normalize LangChain / MCP tool return shapes to plain Python."""
+    if result is None:
+        return None
+    if isinstance(result, (dict, list)):
+        return result
+    if isinstance(result, str):
+        text = result.strip()
+        if text.startswith("{") or text.startswith("["):
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                return result
+        return result
+    # Some adapters wrap content blocks
+    if hasattr(result, "content"):
+        return _coerce_tool_payload(result.content)
+    return result
 
-    # Prefer stub path when configured
+
+def normalize_forecast_days(payload: Any) -> list[dict[str, Any]]:
+    """
+    Map MCP get_forecast output into Trippi day dicts.
+
+    Live weather MCP returns:
+      { city, forecast: [{ date, description, pop_max, temp_min_c, temp_max_c, ... }], days: N }
+    """
+    data = _coerce_tool_payload(payload)
+    if isinstance(data, dict) and data.get("error"):
+        raise RuntimeError(str(data["error"]))
+
+    rows: list[Any] = []
+    if isinstance(data, dict):
+        if isinstance(data.get("forecast"), list):
+            rows = data["forecast"]
+        elif isinstance(data.get("days"), list):
+            rows = data["days"]
+    elif isinstance(data, list):
+        rows = data
+
+    out: list[dict[str, Any]] = []
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        precip = item.get("precip_probability", item.get("pop_max", item.get("pop", 0.2)))
+        try:
+            precip_f = float(precip if precip is not None else 0.2)
+        except (TypeError, ValueError):
+            precip_f = 0.2
+        temp = item.get("temp_c")
+        if temp is None:
+            tmax = item.get("temp_max_c")
+            tmin = item.get("temp_min_c")
+            if tmax is not None and tmin is not None:
+                try:
+                    temp = (float(tmax) + float(tmin)) / 2.0
+                except (TypeError, ValueError):
+                    temp = None
+            elif tmax is not None:
+                temp = tmax
+        out.append(
+            {
+                "date": item.get("date"),
+                "summary": str(item.get("summary") or item.get("description") or "clear"),
+                "precip_probability": precip_f,
+                "temp_c": temp,
+            }
+        )
+    if not out:
+        raise RuntimeError("MCP forecast returned no daily rows")
+    return out
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=2, max=20), reraise=True)
+async def _mcp_call_forecast(city: str, days: int) -> list[dict]:
+    """Call live Weather MCP via streamable HTTP (same path as MCP-Weather agent)."""
+    settings = get_settings()
     if settings.mcp_stub:
         raise RuntimeError("MCP_STUB enabled")
 
-    url = settings.mcp_server_url.rstrip("/")
-    # Streamable HTTP MCP tool invoke is session-based; for robustness we also
-    # support a simple REST shim if present. Primary path uses stub on failure.
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        # Probe
-        await client.get(url)
-        # Attempt tools/call compatible payload used by some MCP HTTP gateways
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": "get_forecast", "arguments": {"city": city, "days": days}},
-        }
-        resp = await client.post(url, json=payload)
-        if resp.status_code >= 400:
-            raise RuntimeError(f"MCP HTTP {resp.status_code}")
-        data = resp.json()
-        # Flexible parse
-        result = data.get("result") or data
-        if isinstance(result, dict) and "content" in result:
-            # content may be text JSON
-            import json
+    from langchain_mcp_adapters.client import MultiServerMCPClient
 
-            for block in result["content"]:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    parsed = json.loads(block["text"])
-                    if isinstance(parsed, dict) and "days" in parsed:
-                        return parsed["days"]
-                    if isinstance(parsed, list):
-                        return parsed
-        if isinstance(result, dict) and "days" in result:
-            return result["days"]
-        if isinstance(result, list):
-            return result
-        raise RuntimeError("Unrecognized MCP forecast payload")
+    url = settings.mcp_server_url.rstrip("/")
+    client = MultiServerMCPClient(
+        {
+            "weather": {
+                "url": url,
+                "transport": "streamable_http",
+            }
+        }
+    )
+    tools = await client.get_tools()
+    forecast_tool = next((t for t in tools if getattr(t, "name", "") == "get_forecast"), None)
+    if forecast_tool is None:
+        names = [getattr(t, "name", "?") for t in tools]
+        raise RuntimeError(f"get_forecast tool not found on MCP server; tools={names}")
+
+    raw = await forecast_tool.ainvoke({"city": city, "days": max(1, min(5, days))})
+    return normalize_forecast_days(raw)
 
 
 async def fetch_forecast(city: str, start: str, end: str) -> tuple[list[WeatherDay], list[WeatherDay], bool]:
