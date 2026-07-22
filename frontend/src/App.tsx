@@ -4,7 +4,7 @@ import type { TripRecord } from "./types";
 import { AgentChips } from "./components/AgentChips";
 import { DiningPanel } from "./components/DiningPanel";
 import { ItineraryPanel } from "./components/ItineraryPanel";
-import { DateShiftCard } from "./components/DateShiftCard";
+import { DateShiftCard, WeatherOutlook } from "./components/DateShiftCard";
 
 const defaultStart = "2026-07-21";
 const defaultEnd = "2026-07-23";
@@ -101,8 +101,8 @@ export default function App() {
       <header className="hero">
         <p className="brand">Trippi-AI</p>
         <p className="tagline">
-          Multi-agent itineraries that adapt to the forecast, suggest better dates when storms roll in,
-          and reserve a local bite plus one special dinner.
+          Multi-agent itineraries orchestrated over your Weather, Research, and Dining MCP services: adapt to the
+          forecast, soft-recommend better dates when it looks wet, and land one local bite plus one special dinner.
         </p>
       </header>
 
@@ -138,10 +138,14 @@ export default function App() {
       {trip && !trip.weather_available && (
         <div className="banner">Weather service was unavailable. Itinerary used a degraded forecast path.</div>
       )}
+      {trip && trip.research_available === false && (
+        <div className="banner">Research service unavailable or stubbed. POIs used seed fallback.</div>
+      )}
 
       {trip && (
         <section className="results">
-          <AgentChips agents={trip.agent_status} />
+          <AgentChips agents={trip.agent_status} planCycle={trip.plan_cycle ?? 1} />
+          {trip.date_shift_suggestion && <WeatherOutlook suggestion={trip.date_shift_suggestion} />}
           {showShift && trip.date_shift_suggestion && (
             <DateShiftCard suggestion={trip.date_shift_suggestion} onRebuild={onRebuild} loading={loading} />
           )}

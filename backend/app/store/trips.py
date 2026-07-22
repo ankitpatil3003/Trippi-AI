@@ -11,9 +11,21 @@ class TripStore:
         self._trips: dict[str, TripRecord] = {}
         self._lock = Lock()
 
-    def create(self, raw_prompt: str) -> TripRecord:
+    def create(
+        self,
+        raw_prompt: str,
+        *,
+        replan_of: str | None = None,
+        plan_cycle: int = 1,
+    ) -> TripRecord:
         trip_id = str(uuid.uuid4())
-        trip = TripRecord(trip_id=trip_id, raw_prompt=raw_prompt, status="queued")
+        trip = TripRecord(
+            trip_id=trip_id,
+            raw_prompt=raw_prompt,
+            status="queued",
+            replan_of=replan_of,
+            plan_cycle=plan_cycle,
+        )
         with self._lock:
             self._trips[trip_id] = trip
         return trip

@@ -89,6 +89,11 @@ async def rebuild_trip(trip_id: str, req: RebuildRequest, background: Background
         party_size=party,
         preferences=prefs,
     )
-    new_trip = trip_store.create(plan_req.prompt)
+    # Full re-plan cycle: new graph run from planner with cycle metadata
+    new_trip = trip_store.create(
+        plan_req.prompt,
+        replan_of=trip_id,
+        plan_cycle=max(1, old.plan_cycle) + 1,
+    )
     background.add_task(_execute_plan, new_trip.trip_id, plan_req)
     return PlanResponse(trip_id=new_trip.trip_id)

@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 def classify_day(precip_probability: float, summary: str) -> WeatherClass:
     text = summary.lower()
-    if precip_probability >= 0.55 or any(w in text for w in ("rain", "storm", "thunder", "shower")):
+    if precip_probability >= 0.40 or any(w in text for w in ("rain", "storm", "thunder", "shower")):
         return WeatherClass.RAINY
-    if precip_probability >= 0.3 or "cloud" in text:
+    if precip_probability >= 0.20 or "cloud" in text:
         return WeatherClass.MIXED
     return WeatherClass.CLEAR
 
@@ -105,7 +105,7 @@ async def _mcp_call_forecast(city: str, days: int) -> list[dict]:
 
     from langchain_mcp_adapters.client import MultiServerMCPClient
 
-    url = settings.mcp_server_url.rstrip("/")
+    url = settings.resolved_weather_mcp_url()
     client = MultiServerMCPClient(
         {
             "weather": {

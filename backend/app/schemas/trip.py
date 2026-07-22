@@ -39,6 +39,8 @@ class POI(BaseModel):
     lat: float | None = None
     lon: float | None = None
     score: float = 0.0
+    source_urls: list[str] = Field(default_factory=list)
+    confidence: float = 0.5
 
 
 class RestaurantCandidate(BaseModel):
@@ -51,6 +53,8 @@ class RestaurantCandidate(BaseModel):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     score: float = 0.0
+    source_urls: list[str] = Field(default_factory=list)
+    confidence: float = 0.5
 
 
 class WeatherDay(BaseModel):
@@ -68,6 +72,11 @@ class DateShiftSuggestion(BaseModel):
     suggested_rain_ratio: float
     reason: str
     direction: Literal["postpone", "prepone", "none"] = "none"
+    wetness: float = 0.0
+    suggested_wetness: float = 0.0
+    threshold: float = 0.35
+    daily_pops: list[float] = Field(default_factory=list)
+    daily_dates: list[str] = Field(default_factory=list)
 
 
 class ItineraryBlock(BaseModel):
@@ -126,12 +135,16 @@ class TripRecord(BaseModel):
     weather_by_day: list[WeatherDay] = Field(default_factory=list)
     weather_window_extended: list[WeatherDay] = Field(default_factory=list)
     weather_available: bool = True
+    research_available: bool = True
+    dining_available: bool = True
     date_shift_suggestion: DateShiftSuggestion | None = None
     itinerary: list[ItineraryDay] = Field(default_factory=list)
     dining_picks: DiningPicks | None = None
     agent_status: list[AgentStatus] = Field(default_factory=list)
     errors: list[TripError] = Field(default_factory=list)
     eval_run_id: str | None = None
+    replan_of: str | None = None
+    plan_cycle: int = 1
     meta: dict[str, Any] = Field(default_factory=dict)
 
 
