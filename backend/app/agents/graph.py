@@ -62,9 +62,9 @@ async def _set_status(trip_id: str, agent: str, status: str, message: str = "") 
 
 
 def _reset_agent_chips(trip: TripRecord) -> None:
+    message = "Waiting for re-plan cycle" if trip.plan_cycle > 1 else ""
     trip.agent_status = [
-        AgentStatus(agent=name, status="pending", message="Waiting for re-plan cycle" if trip.plan_cycle > 1 else "")
-        for name in AGENT_ORDER
+        AgentStatus(agent=name, status="pending", message=message) for name in AGENT_ORDER
     ]
     trip_store.save(trip)
 
@@ -104,14 +104,15 @@ async def researcher_node(state: GraphState) -> dict[str, Any]:
 
     settings = get_settings()
     intentional_seed = settings.research_mcp_stub or not settings.research_mcp_url.strip()
-    source = "Research service" if research_ok else "seed fallback"
-    chip = "done" if (research_ok or intentional_seed) else "skipped"
-    status = await _set_status(
-        trip_id,
-        "researcher",
-        chip,
-        f"{source}: {len(pois)} POIs",
-    )
+    source = "Research service" if research_ok else "recorded corpus"
+    if not pois:
+        # No real places available. Never paper over this with invented data.
+        chip = "skipped"
+        message = f"No real places available for {c['city']}"
+    else:
+        chip = "done" if (research_ok or intentional_seed) else "skipped"
+        message = f"{source}: {len(pois)} POIs"
+    status = await _set_status(trip_id, "researcher", chip, message)
     return {
         "pois": [p.model_dump() for p in pois],
         "research_available": research_ok,
@@ -181,12 +182,16 @@ async def dining_node(state: GraphState) -> dict[str, Any]:
         trip_store.save(trip)
     settings = get_settings()
     intentional_seed = settings.dining_mcp_stub or not settings.dining_mcp_url.strip()
-    msg = (
-        f"Dining service: {len(candidates)} candidates"
-        if dining_available
-        else "Dining picks from seed/degraded candidates"
-    )
-    chip = "done" if (dining_available or intentional_seed) else "skipped"
+    if not candidates:
+        chip = "skipped"
+        msg = f"No real restaurants available for {c['city']}"
+    else:
+        chip = "done" if (dining_available or intentional_seed) else "skipped"
+        msg = (
+            f"Dining service: {len(candidates)} candidates"
+            if dining_available
+            else f"Recorded corpus: {len(candidates)} candidates"
+        )
     status = await _set_status(trip_id, "dining", chip, msg)
     return {
         "restaurant_candidates": [r.model_dump() for r in candidates],

@@ -43,6 +43,7 @@ def _restaurant_from_row(row: dict[str, Any], city: str) -> RestaurantCandidate 
         score=float(row.get("score") or 0.5),
         source_urls=[str(u) for u in (row.get("source_urls") or []) if u],
         confidence=float(row.get("confidence") or 0.65),
+        provenance="live",
     )
 
 

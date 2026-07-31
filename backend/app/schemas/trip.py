@@ -28,6 +28,9 @@ class TripConstraints(BaseModel):
     origin: str | None = None
 
 
+Provenance = Literal["live", "seed"]
+
+
 class POI(BaseModel):
     id: str
     name: str
@@ -41,6 +44,8 @@ class POI(BaseModel):
     score: float = 0.0
     source_urls: list[str] = Field(default_factory=list)
     confidence: float = 0.5
+    # Where this record came from. Never present unsourced data as live.
+    provenance: Provenance = "seed"
 
 
 class RestaurantCandidate(BaseModel):
@@ -55,6 +60,7 @@ class RestaurantCandidate(BaseModel):
     score: float = 0.0
     source_urls: list[str] = Field(default_factory=list)
     confidence: float = 0.5
+    provenance: Provenance = "seed"
 
 
 class WeatherDay(BaseModel):
@@ -88,6 +94,8 @@ class ItineraryBlock(BaseModel):
     notes: str = ""
     fallback: bool = False
     kind: Literal["poi", "meal", "buffer"] = "poi"
+    # None for buffer blocks, which are generic time, not a sourced place.
+    provenance: Provenance | None = None
 
 
 class ItineraryDay(BaseModel):
@@ -106,6 +114,7 @@ class DiningPick(BaseModel):
     meal_slot: Literal["lunch", "dinner"] | None = None
     grounding: Literal["strong", "weak"] = "strong"
     reason: str = ""
+    provenance: Provenance = "seed"
 
 
 class DiningPicks(BaseModel):
