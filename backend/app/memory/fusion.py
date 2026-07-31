@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 from collections import defaultdict
@@ -16,10 +17,20 @@ def _tokenize(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
+def _stable_hash(token: str) -> int:
+    """Process independent token hash.
+
+    Builtin hash() is salted per process (PYTHONHASHSEED), which would make
+    retrieval scores and the offline eval numbers irreproducible across runs.
+    """
+    digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+    return int.from_bytes(digest, "big")
+
+
 def _hash_embed(text: str, dim: int = 64) -> np.ndarray:
     vec = np.zeros(dim, dtype=np.float64)
     for tok in _tokenize(text):
-        h = hash(tok) % dim
+        h = _stable_hash(tok) % dim
         vec[h] += 1.0
     norm = np.linalg.norm(vec)
     if norm > 0:

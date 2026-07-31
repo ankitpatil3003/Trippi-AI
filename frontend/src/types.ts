@@ -1,5 +1,8 @@
 export type WeatherClass = "clear" | "mixed" | "rainy";
 
+/** Where a recommendation came from. Never show unsourced data as live. */
+export type Provenance = "live" | "seed";
+
 export interface AgentStatus {
   agent: string;
   status: "pending" | "running" | "done" | "error" | "skipped";
@@ -14,6 +17,7 @@ export interface ItineraryBlock {
   notes: string;
   fallback: boolean;
   kind: "poi" | "meal" | "buffer";
+  provenance: Provenance | null;
 }
 
 export interface ItineraryDay {
@@ -32,6 +36,21 @@ export interface DiningPick {
   meal_slot: string | null;
   grounding: string;
   reason: string;
+  provenance: Provenance;
+}
+
+export interface DateShiftSuggestion {
+  original_rain_ratio: number;
+  suggested_start: string;
+  suggested_end: string;
+  suggested_rain_ratio: number;
+  reason: string;
+  direction: "postpone" | "prepone" | "none";
+  wetness?: number;
+  suggested_wetness?: number;
+  threshold?: number;
+  daily_pops?: number[];
+  daily_dates?: string[];
 }
 
 export interface TripRecord {
@@ -44,14 +63,9 @@ export interface TripRecord {
     end_date: string;
   } | null;
   weather_available: boolean;
-  date_shift_suggestion: {
-    original_rain_ratio: number;
-    suggested_start: string;
-    suggested_end: string;
-    suggested_rain_ratio: number;
-    reason: string;
-    direction: "postpone" | "prepone" | "none";
-  } | null;
+  research_available?: boolean;
+  dining_available?: boolean;
+  date_shift_suggestion: DateShiftSuggestion | null;
   itinerary: ItineraryDay[];
   dining_picks: {
     local_must_try: DiningPick | null;
@@ -59,4 +73,6 @@ export interface TripRecord {
   } | null;
   agent_status: AgentStatus[];
   errors: { code: string; message: string; retryable: boolean }[];
+  replan_of?: string | null;
+  plan_cycle?: number;
 }

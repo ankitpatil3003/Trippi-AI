@@ -27,6 +27,7 @@ def rank_dining(
             meal_slot="lunch",
             grounding=grounding if grounding == "strong" else "weak",  # type: ignore[arg-type]
             reason=f"Local must try: {local.description or local.cuisine}",
+            provenance=local.provenance,
         )
     if fancy:
         fancy_day = days[-1] if days else None
@@ -37,8 +38,9 @@ def rank_dining(
             price_tier="fancy",
             day_date=fancy_day,
             meal_slot="dinner",
-            grounding="strong",
+            grounding=grounding if grounding == "strong" else "weak",  # type: ignore[arg-type]
             reason=f"Fancy must try: {fancy.description or fancy.cuisine}",
+            provenance=fancy.provenance,
         )
 
     # Place meal blocks onto itinerary days when possible
@@ -47,21 +49,21 @@ def rank_dining(
             if day.date == local_pick.day_date:
                 day.blocks.insert(
                     1,
-                    _meal_block(local_pick.name, "12:00", "13:15", "local lunch"),
+                    _meal_block(local_pick.name, "12:00", "13:15", "local lunch", local_pick.provenance),
                 )
                 break
     if fancy_pick and fancy_pick.day_date:
         for day in itinerary:
             if day.date == fancy_pick.day_date:
                 day.blocks.append(
-                    _meal_block(fancy_pick.name, "19:00", "21:00", "fancy dinner"),
+                    _meal_block(fancy_pick.name, "19:00", "21:00", "fancy dinner", fancy_pick.provenance),
                 )
                 break
 
     return DiningPicks(local_must_try=local_pick, fancy_must_try=fancy_pick)
 
 
-def _meal_block(title: str, start: str, end: str, notes: str):
+def _meal_block(title: str, start: str, end: str, notes: str, provenance: str = "seed"):
     from app.schemas.trip import ItineraryBlock, SettingKind
 
     return ItineraryBlock(
@@ -71,4 +73,5 @@ def _meal_block(title: str, start: str, end: str, notes: str):
         setting=SettingKind.INDOOR,
         notes=notes,
         kind="meal",
+        provenance=provenance,  # type: ignore[arg-type]
     )

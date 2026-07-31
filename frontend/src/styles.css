@@ -148,11 +148,53 @@ textarea {
   color: var(--danger);
 }
 
+.error-list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.error-list li {
+  margin: 0.15rem 0;
+}
+
+.status-block {
+  margin: 1.25rem 0 0.5rem;
+}
+
+.cycle-badge {
+  display: inline-block;
+  margin-bottom: 0.55rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: #ffe8c8;
+  color: #7a3e00;
+  border: 1px solid #efc48a;
+}
+
 .status-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 1.25rem 0 0.5rem;
+}
+
+.outlook-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.outlook-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(11, 42, 50, 0.08);
+  font-size: 0.95rem;
 }
 
 .chip {

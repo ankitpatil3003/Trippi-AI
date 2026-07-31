@@ -1,5 +1,31 @@
 services:
   - type: web
+    name: trippi-research-mcp
+    runtime: docker
+    rootDir: services/research-mcp
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: OPENTRIPMAP_API_KEY
+        sync: false
+      - key: MCP_HOST
+        value: "0.0.0.0"
+
+  - type: web
+    name: trippi-dining-mcp
+    runtime: docker
+    rootDir: services/dining-mcp
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: OPENTRIPMAP_API_KEY
+        sync: false
+      - key: MCP_HOST
+        value: "0.0.0.0"
+
+  - type: web
     name: trippi-ai-api
     runtime: docker
     rootDir: backend
@@ -8,7 +34,17 @@ services:
     envVars:
       - key: MCP_SERVER_URL
         sync: false
+      - key: WEATHER_MCP_URL
+        sync: false
+      - key: RESEARCH_MCP_URL
+        sync: false
+      - key: DINING_MCP_URL
+        sync: false
       - key: MCP_STUB
+        value: "false"
+      - key: RESEARCH_MCP_STUB
+        value: "false"
+      - key: DINING_MCP_STUB
         value: "false"
       - key: LLM_PROVIDER
         value: openrouter
@@ -23,6 +59,8 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: DATE_SHIFT_RAIN_RATIO
-        value: "0.6"
+        value: "0.35"
+      - key: DATE_SHIFT_MIN_IMPROVEMENT
+        value: "0.12"
       - key: CORS_ORIGINS
         sync: false

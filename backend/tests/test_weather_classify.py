@@ -6,9 +6,13 @@ def test_classify_rainy():
     assert classify_day(0.8, "light rain") == WeatherClass.RAINY
 
 
+def test_classify_rainy_at_040():
+    assert classify_day(0.42, "overcast clouds") == WeatherClass.RAINY
+
+
 def test_classify_clear():
     assert classify_day(0.05, "clear sky") == WeatherClass.CLEAR
 
 
 def test_classify_mixed():
-    assert classify_day(0.35, "partly cloudy") == WeatherClass.MIXED
+    assert classify_day(0.25, "partly cloudy") == WeatherClass.MIXED

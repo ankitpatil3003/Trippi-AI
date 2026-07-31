@@ -79,6 +79,7 @@ def build_itinerary(
                     notes=poi.description,
                     fallback=fallback,
                     kind="poi",
+                    provenance=poi.provenance,
                 )
             )
 
