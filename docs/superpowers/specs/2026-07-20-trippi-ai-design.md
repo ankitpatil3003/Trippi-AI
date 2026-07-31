@@ -70,7 +70,8 @@ Trust boundaries: UI talks only to Trippi-AI API. API never holds `OPENWEATHER_A
 
 - `original_rain_ratio`, `suggested_start`, `suggested_end`, `suggested_rain_ratio`
 - `reason`, `direction` (`postpone` | `prepone` | `none`)
-- Threshold default: `0.6` (env `DATE_SHIFT_RAIN_RATIO`)
+- Threshold default: `0.35` (env `DATE_SHIFT_RAIN_RATIO`), scored on continuous
+  wetness (mean daily precip probability) rather than a binary rainy day count
 
 ## 5. Agents and rules
 

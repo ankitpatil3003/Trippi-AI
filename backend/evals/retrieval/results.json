@@ -1,31 +1,31 @@
 {
   "strategies": {
     "dense": {
-      "recall@5": 0.6111,
+      "recall@5": 0.9167,
       "per_query": [
-        0.3333333333333333,
-        0.5,
+        1.0,
+        0.75,
         1.0
       ]
     },
     "dense_bm25": {
-      "recall@5": 0.7222,
+      "recall@5": 0.9167,
       "per_query": [
-        0.6666666666666666,
-        0.5,
+        1.0,
+        0.75,
         1.0
       ]
     },
     "hybrid": {
-      "recall@5": 0.7222,
+      "recall@5": 0.9167,
       "per_query": [
-        0.6666666666666666,
-        0.5,
+        1.0,
+        0.75,
         1.0
       ]
     }
   },
   "dataset_size": 3,
   "hybrid_neighborhood_count_top5": 2,
-  "hybrid_vs_dense_recall_lift": 0.1818
+  "hybrid_vs_dense_recall_lift": 0.0
 }

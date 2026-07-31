@@ -5,7 +5,12 @@ from app.llm.factory import describe_llm, provider_ready, resolve_provider
 
 
 def test_resolve_openrouter():
-    s = Settings(llm_provider="openrouter", openrouter_api_key="sk-or-test")
+    s = Settings(
+        llm_provider="openrouter",
+        openrouter_api_key="sk-or-test",
+        openrouter_model="openrouter/free",
+        llm_model="",
+    )
     assert resolve_provider(s) == "openrouter"
     assert provider_ready(s) is True
     info = describe_llm(s)

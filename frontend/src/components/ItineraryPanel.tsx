@@ -26,6 +26,8 @@ export function ItineraryPanel({
                 <div>{block.title}</div>
                 <p className="muted">
                   {block.setting}
+                  {block.provenance === "live" ? " · live source" : ""}
+                  {block.provenance === "seed" ? " · recorded source" : ""}
                   {block.fallback ? " · fallback" : ""}
                   {block.notes ? ` · ${block.notes}` : ""}
                 </p>
