@@ -6,7 +6,19 @@ LangGraph agents share one trip state to turn a natural language request into a 
 
 **Live UI:** https://trippi-ai-seven.vercel.app  
 **Weather service:** https://weather-mcp-oe6z.onrender.com/health ([MCP-Weather-Agent-with-LangChain](https://github.com/ankitpatil3003/MCP-Weather-Agent-with-LangChain))  
-**Design spec:** [docs/superpowers/specs/2026-07-20-trippi-ai-design.md](docs/superpowers/specs/2026-07-20-trippi-ai-design.md)
+**Design spec:** [docs/superpowers/specs/2026-07-20-trippi-ai-design.md](docs/superpowers/specs/2026-07-20-trippi-ai-design.md)  
+**Sourcing integrity:** [docs/INTEGRITY.md](docs/INTEGRITY.md)
+
+## Data sourcing
+
+Trippi never invents a place. Every POI and restaurant resolves to a real entity from
+OpenTripMap, OpenStreetMap, or Wikipedia and carries a source URL, tagged `live` or
+`seed` in the UI. When a destination cannot be sourced, Trippi says so and returns
+nothing rather than filling the gap. See [docs/INTEGRITY.md](docs/INTEGRITY.md).
+
+Current status: the Weather service is deployed and live. Research and Dining are
+implemented but **not yet deployed**, so both run from the recorded corpus
+(`backend/app/memory/seed_corpus.json`), which currently covers New York only.
 
 ## Highlights
 
@@ -14,7 +26,7 @@ LangGraph agents share one trip state to turn a natural language request into a 
 - Parallel Research + Weather fan-out, then weather-aware packaging
 - Soft date-shift on continuous wetness (not only binary rainy days), with Weather outlook scores in the UI
 - Accepting a date shift starts a full **re-plan cycle** from the planner (chips reset)
-- Hybrid retrieval seed fallback when an MCP service is stubbed or down
+- Recorded corpus fallback, real places only, when an MCP service is stubbed or down
 - LLM providers: OpenRouter (free), Anthropic Haiku, OpenAI, or heuristic (no key)
 
 ## Integrated MCP services
@@ -65,6 +77,26 @@ npm run dev
 
 Open http://localhost:5173. With `MCP_STUB=true` / `RESEARCH_MCP_STUB=true` / `DINING_MCP_STUB=true` the API does not need live MCP URLs.
 
+If port 8080 is already taken locally, for example by Apache, run the API elsewhere
+and point the dev proxy at it:
+
+```bash
+uvicorn app.main:app --reload --port 8081        # backend
+VITE_PROXY_TARGET=http://127.0.0.1:8081 npm run dev   # frontend
+```
+
+## Rebuilding the recorded corpus
+
+The fallback corpus is a recording of real API responses, not hand written data.
+
+```bash
+export OPENTRIPMAP_API_KEY=...       # or services/research-mcp/.env
+python scripts/build_seed_corpus.py                  # all destinations
+python scripts/build_seed_corpus.py --cities "Paris" # one destination
+```
+
+A destination that fails to fetch is skipped, never filled in with a placeholder.
+
 ## LLM providers
 
 Set `LLM_PROVIDER` in `backend/.env`:
@@ -96,9 +128,18 @@ Trippi-AI never stores `OPENWEATHER_API_KEY` or `OPENTRIPMAP_API_KEY` on the API
 
 ```bash
 cd backend
-pytest -q
-python -m evals.retrieval.run_eval
+pytest -q                          # hermetic, no network calls
+python -m evals.retrieval.run_eval # deterministic, safe to diff
+
+cd ../frontend
+npm run lint
+npm run test:e2e                   # needs the API running with MCP_STUB=true
 ```
+
+Retrieval eval numbers are measured, not estimated. On the current three query
+NYC dataset, dense, dense+BM25, and full hybrid all score `recall@5 = 0.9167`,
+so the measured hybrid lift is `0.0`. The dataset is too small to separate the
+strategies; widening it is tracked for the next release.
 
 ## Cloud deploy order
 
