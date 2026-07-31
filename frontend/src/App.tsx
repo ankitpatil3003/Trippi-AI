@@ -26,6 +26,16 @@ export default function App() {
     [trip],
   );
 
+  // Buffer blocks carry no provenance. If nothing in the trip has a source,
+  // no real place was found and the schedule is placeholder time only.
+  const noSourcedPlaces = useMemo(
+    () =>
+      !!trip &&
+      trip.itinerary.length > 0 &&
+      trip.itinerary.every((day) => day.blocks.every((b) => !b.provenance)),
+    [trip],
+  );
+
   useEffect(() => {
     if (!tripId) return;
     let cancelled = false;
@@ -139,7 +149,33 @@ export default function App() {
         <div className="banner">Weather service was unavailable. Itinerary used a degraded forecast path.</div>
       )}
       {trip && trip.research_available === false && (
-        <div className="banner">Research service unavailable or stubbed. POIs used seed fallback.</div>
+        <div className="banner">
+          Research service unavailable or stubbed. Places came from the recorded corpus, not a live search.
+        </div>
+      )}
+      {trip && trip.dining_available === false && (
+        <div className="banner">
+          Dining service unavailable or stubbed. Restaurants came from the recorded corpus, not a live search.
+        </div>
+      )}
+      {trip && trip.itinerary.length > 0 && noSourcedPlaces && (
+        <div className="banner">
+          No real places could be sourced for {trip.constraints?.city ?? "this destination"}. Trippi does not
+          invent recommendations, so the schedule below is generic placeholder time only.
+        </div>
+      )}
+      {trip && trip.errors?.length > 0 && (
+        <div className="banner">
+          <strong>Planner notes</strong>
+          <ul className="error-list">
+            {trip.errors.map((e) => (
+              <li key={e.code}>
+                {e.message}
+                {e.retryable ? " (retryable)" : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {trip && (

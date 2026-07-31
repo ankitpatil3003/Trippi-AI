@@ -1,5 +1,8 @@
 export type WeatherClass = "clear" | "mixed" | "rainy";
 
+/** Where a recommendation came from. Never show unsourced data as live. */
+export type Provenance = "live" | "seed";
+
 export interface AgentStatus {
   agent: string;
   status: "pending" | "running" | "done" | "error" | "skipped";
@@ -14,6 +17,7 @@ export interface ItineraryBlock {
   notes: string;
   fallback: boolean;
   kind: "poi" | "meal" | "buffer";
+  provenance: Provenance | null;
 }
 
 export interface ItineraryDay {
@@ -32,6 +36,7 @@ export interface DiningPick {
   meal_slot: string | null;
   grounding: string;
   reason: string;
+  provenance: Provenance;
 }
 
 export interface DateShiftSuggestion {
