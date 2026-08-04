@@ -1,5 +1,47 @@
 [
-  {"query": "indoor art museums", "city": "New York", "relevant_ids": ["poi_met", "poi_moma", "poi_gum"]},
-  {"query": "outdoor views and walks", "city": "New York", "relevant_ids": ["poi_central_park", "poi_brooklyn_bridge", "poi_high_line", "poi_statue"]},
-  {"query": "family science museum", "city": "New York", "relevant_ids": ["poi_amnh"]}
+  {
+    "query": "indoor art museums",
+    "city": "New York",
+    "relevant_ids": ["wv_Q2420849", "wv_Q1138030", "wv_Q66121148"]
+  },
+  {
+    "query": "outdoor parks and walks",
+    "city": "New York",
+    "relevant_ids": ["wv_Q909592", "wv_Q3522417", "wv_Q1636278"]
+  },
+  {
+    "query": "historic civic buildings",
+    "city": "New York",
+    "relevant_ids": ["wv_Q1065206", "wv_Q929403", "wv_Q2254337"]
+  },
+  {
+    "query": "art museums",
+    "city": "Paris",
+    "relevant_ids": ["wv_Q1319378", "wv_Q977732", "wv_Q820892", "wv_Q178065"]
+  },
+  {
+    "query": "outdoor landmarks and views",
+    "city": "Paris",
+    "relevant_ids": ["wv_Q243", "wv_Q550", "wv_Q818517", "wv_Q684594"]
+  },
+  {
+    "query": "churches and religious sites",
+    "city": "Paris",
+    "relevant_ids": ["wv_Q334186", "wv_Q392564", "wv_Q782969", "wv_Q188856"]
+  },
+  {
+    "query": "museums and galleries",
+    "city": "Rome",
+    "relevant_ids": ["wv_Q182955", "wv_Q3868150"]
+  },
+  {
+    "query": "outdoor squares and fountains",
+    "city": "Rome",
+    "relevant_ids": ["wv_Q2518575", "wv_Q185382", "wv_Q83425", "wv_Q1541068"]
+  },
+  {
+    "query": "ancient roman ruins",
+    "city": "Rome",
+    "relevant_ids": ["wv_Q281330", "wv_Q1235515", "wv_Q99309"]
+  }
 ]

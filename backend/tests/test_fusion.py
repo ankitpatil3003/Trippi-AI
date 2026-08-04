@@ -19,4 +19,10 @@ def test_rrf_prefers_consensus():
 def test_hybrid_nyc_returns_pois():
     pois = hybrid_retrieve_pois("New York", "museums art indoor", top_k=5, strategy="hybrid")
     assert len(pois) >= 3
-    assert any("museum" in p.name.lower() or "art" in " ".join(p.tags) for p in pois)
+    # Corpus entries carry their category in the description rather than in the
+    # name or tags, so relevance has to be judged over the indexed text.
+    haystacks = [f"{p.name} {p.description} {' '.join(p.tags)}".lower() for p in pois]
+    assert any(
+        any(word in text for word in ("museum", "art", "gallery", "exhibit"))
+        for text in haystacks
+    )

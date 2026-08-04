@@ -12,10 +12,19 @@ from an open or licensed source, and carries a source URL. Current sources:
 
 | Source | Used for | Where |
 |--------|----------|-------|
-| OpenTripMap | POIs, restaurants, geocoding | `services/research-mcp/`, `services/dining-mcp/` |
+| Wikivoyage listings | Which places exist and are notable, coordinates, price band, district | `services/*/wikivoyage.py` |
+| Wikipedia | Descriptions, resolved through a listing's Wikidata id | `services/*/wikivoyage.py` |
+| OpenTripMap | Fallback POIs, restaurants, geocoding | `services/research-mcp/`, `services/dining-mcp/` |
 | OpenStreetMap via Overpass | Restaurants | `services/dining-mcp/dining_client.py` |
-| Wikipedia, Wikivoyage | Descriptions and city context | `services/research-mcp/research_client.py` |
 | OpenWeather | Forecasts | external Weather MCP service |
+
+From Wikivoyage we take facts and identifiers only: the name, coordinates, price
+and Wikidata id. We do not copy listing prose, and we do not reproduce an
+article's ordering as an itinerary. Descriptions come from Wikipedia, and when
+the resolved article does not plausibly match the listing the description is
+dropped rather than attached. A wrong description is a fabrication even when
+every word of it was sourced: the Balto statue came back described as the Balbo
+Monument, and `wikivoyage._titles_agree` now rejects that.
 
 Trippi never generates a place name. It has done so before: the fallback used
 to build entries by interpolating the requested city, producing strings like
@@ -59,5 +68,8 @@ is an acceptable answer. A plausible invention is not.
 **recording of real API responses**, not hand-written data, produced by
 `scripts/build_seed_corpus.py`. Building it this way means the fallback is real
 and attributable by construction rather than by good intentions.
+
+It currently covers ten destinations: New York, Paris, London, Tokyo, Rome,
+Barcelona, Amsterdam, Singapore, Dubai and San Francisco.
 
 Cities absent from the corpus return nothing. That is the intended behavior.

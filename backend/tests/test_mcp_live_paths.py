@@ -10,6 +10,10 @@ from tenacity import wait_none
 from app.config import Settings
 from app.mcp import dining_mcp, research
 
+# A city deliberately absent from the recorded corpus, so the degraded path has
+# nothing real to serve. Paris cannot play this role: it is recorded now.
+UNSOURCED_CITY = "Reykjavik"
+
 LIVE_POI_PAYLOAD = {
     "city": "Paris",
     "pois": [
@@ -89,10 +93,10 @@ async def test_research_live_payload_is_normalized_and_marked_live(monkeypatch):
 @pytest.mark.asyncio
 async def test_research_error_payload_falls_back_without_inventing(monkeypatch):
     _stub_tool(monkeypatch, research, {"error": "OpenTripMap rate limit"})
-    pois, available = await research.fetch_pois("Paris", "museums")
+    pois, available = await research.fetch_pois(UNSOURCED_CITY, "museums")
 
     assert available is False
-    # Paris is not in the recorded corpus, so the honest result is nothing.
+    # Not in the recorded corpus, so the honest result is nothing.
     assert pois == []
 
 
@@ -109,7 +113,7 @@ async def test_research_error_payload_falls_back_to_recorded_corpus(monkeypatch)
 @pytest.mark.asyncio
 async def test_research_unnormalizable_rows_are_rejected(monkeypatch):
     _stub_tool(monkeypatch, research, {"pois": [{"id": "x"}, {"name": "   "}]})
-    pois, available = await research.fetch_pois("Paris", "museums")
+    pois, available = await research.fetch_pois(UNSOURCED_CITY, "museums")
 
     assert available is False
     assert pois == []
@@ -129,7 +133,23 @@ async def test_dining_live_payload_is_normalized_and_marked_live(monkeypatch):
 @pytest.mark.asyncio
 async def test_dining_empty_result_falls_back_without_inventing(monkeypatch):
     _stub_tool(monkeypatch, dining_mcp, {"restaurants": []})
-    picks, available = await dining_mcp.fetch_restaurants("Paris", "bistro")
+    picks, available = await dining_mcp.fetch_restaurants(UNSOURCED_CITY, "bistro")
 
     assert available is False
     assert picks == []
+
+
+@pytest.mark.asyncio
+async def test_dining_fallback_keeps_both_price_tiers(monkeypatch):
+    """A city with a single fancy restaurant must still yield a fancy pick.
+
+    Relevance ranking returns the top 8 matches, and the one fancy entry can sit
+    outside that window, which left `fancy_must_try` empty for a recorded city.
+    """
+    _stub_tool(monkeypatch, dining_mcp, {"restaurants": []})
+    picks, available = await dining_mcp.fetch_restaurants("New York", "bistro")
+
+    assert available is False
+    tiers = {p.price_tier for p in picks}
+    assert "fancy" in tiers
+    assert "local" in tiers
