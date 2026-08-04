@@ -2,12 +2,16 @@
 
 The corpus is Trippi's degraded-mode fallback. It must contain only real,
 verifiable places, so it is built by calling the same live sources the MCP
-services use (OpenTripMap, Wikipedia, OpenStreetMap) and recording the result.
-Nothing here invents data: a city that fails to fetch is skipped, not filled in.
+services use (Wikivoyage, Wikipedia, OpenTripMap, OpenStreetMap) and recording
+the result. Nothing here invents data: a city that fails to fetch is skipped,
+not filled in.
+
+An OpenTripMap key is optional. Wikivoyage and Wikipedia carry the build on
+their own, and the key only widens the restaurant candidate pool.
 
 Usage:
-    export OPENTRIPMAP_API_KEY=...        # or put it in services/research-mcp/.env
     python scripts/build_seed_corpus.py
+    export OPENTRIPMAP_API_KEY=...        # optional, or services/research-mcp/.env
     python scripts/build_seed_corpus.py --cities "Paris,Tokyo"   # refresh a subset
 """
 
@@ -46,11 +50,17 @@ ALIASES: dict[str, list[str]] = {
 }
 
 # Two passes so the packager has both an indoor and an outdoor pool to draw on.
-# research_client picks OpenTripMap "kinds" from these preference keywords.
+# The preference text biases ranking; research_client classifies each result's
+# setting from its name, so the two passes overlap and are merged by id.
 POI_PASSES = [("museums art culture", "indoor"), ("parks views outdoor gardens", "outdoor")]
 
 
 def _load_module(name: str, path: Path):
+    # The service modules import their local `wikivoyage` helper, so the service
+    # directory has to be importable before the module body runs.
+    directory = str(path.parent)
+    if directory not in sys.path:
+        sys.path.insert(0, directory)
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load {path}")
@@ -120,11 +130,13 @@ async def main() -> int:
     parser.add_argument("--limit", type=int, default=12, help="Items requested per source")
     args = parser.parse_args()
 
+    # Wikivoyage and Wikipedia need no credentials, so the build works without a
+    # key. OpenTripMap and Overpass only add extra candidates when one is present.
     key = _load_key()
-    if not key:
-        print("OPENTRIPMAP_API_KEY is not set. Export it or add it to services/research-mcp/.env")
-        return 1
-    os.environ["OPENTRIPMAP_API_KEY"] = key
+    if key:
+        os.environ["OPENTRIPMAP_API_KEY"] = key
+    else:
+        print("No OPENTRIPMAP_API_KEY found. Building from Wikivoyage and Wikipedia only.")
 
     research = _load_module("_research_client", ROOT / "services" / "research-mcp" / "research_client.py")
     dining = _load_module("_dining_client", ROOT / "services" / "dining-mcp" / "dining_client.py")
@@ -138,7 +150,8 @@ async def main() -> int:
     corpus.setdefault("neighborhood_links", {})
     corpus["note"] = (
         "Recorded fallback corpus. Every entry is a real place fetched from "
-        "OpenTripMap, Wikipedia, and OpenStreetMap. Rebuild with scripts/build_seed_corpus.py."
+        "Wikivoyage, Wikipedia, OpenTripMap, and OpenStreetMap. "
+        "Rebuild with scripts/build_seed_corpus.py."
     )
 
     cities = [c.strip() for c in args.cities.split(",") if c.strip()] or DEFAULT_CITIES

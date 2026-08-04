@@ -40,8 +40,28 @@ def test_recorded_city_returns_real_places_marked_as_seed():
     pois = pois_for_city("New York")
     assert pois, "New York should be in the recorded corpus"
     assert all(p.provenance == "seed" for p in pois)
-    # Real, verifiable landmarks rather than generated stand-ins.
-    assert "Statue of Liberty" in [p.name for p in pois]
+    # Attributability is the property that matters, and it holds for any city.
+    # Asserting one landmark by name only tracked which sights the crawl happened
+    # to rank first, and broke whenever the corpus was rebuilt.
+    assert all(p.source_urls for p in pois), "every place must cite a source"
+    assert all(p.name.strip() for p in pois)
+
+
+def test_every_recorded_city_can_fill_a_plan():
+    """Each city needs both settings and both dining tiers, or plans degrade.
+
+    Without an indoor option a rainy day has nothing to fall back on, and without
+    a fancy candidate the dining node returns an empty second pick.
+    """
+    for city in known_cities():
+        pois = pois_for_city(city)
+        restaurants = restaurants_for_city(city)
+        settings = {p.setting for p in pois}
+        tiers = {r.price_tier for r in restaurants}
+        assert "indoor" in settings or "either" in settings, f"{city}: no indoor option"
+        assert "outdoor" in settings or "either" in settings, f"{city}: no outdoor option"
+        assert "fancy" in tiers, f"{city}: no fancy restaurant"
+        assert "local" in tiers, f"{city}: no local restaurant"
 
 
 def test_city_aliases_resolve_to_the_same_records():

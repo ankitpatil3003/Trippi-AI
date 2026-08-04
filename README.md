@@ -12,13 +12,20 @@ LangGraph agents share one trip state to turn a natural language request into a 
 ## Data sourcing
 
 Trippi never invents a place. Every POI and restaurant resolves to a real entity from
-OpenTripMap, OpenStreetMap, or Wikipedia and carries a source URL, tagged `live` or
-`seed` in the UI. When a destination cannot be sourced, Trippi says so and returns
-nothing rather than filling the gap. See [docs/INTEGRITY.md](docs/INTEGRITY.md).
+Wikivoyage, Wikipedia, OpenTripMap, or OpenStreetMap and carries a source URL, tagged
+`live` or `seed` in the UI. When a destination cannot be sourced, Trippi says so and
+returns nothing rather than filling the gap. See [docs/INTEGRITY.md](docs/INTEGRITY.md).
+
+Discovery is Wikivoyage-led. Its articles carry structured `see`/`eat` listings with
+coordinates and Wikidata ids, which is what makes it possible to ask what a city is
+known for. OpenTripMap cannot answer that question: its radius search returns the
+places nearest a point, capped at 500 rows, so in a large city it never reaches the
+landmarks. It remains a fallback for destinations Wikivoyage does not cover.
 
 Current status: the Weather service is deployed and live. Research and Dining are
 implemented but **not yet deployed**, so both run from the recorded corpus
-(`backend/app/memory/seed_corpus.json`), which currently covers New York only.
+(`backend/app/memory/seed_corpus.json`), which covers ten destinations: New York,
+Paris, London, Tokyo, Rome, Barcelona, Amsterdam, Singapore, Dubai and San Francisco.
 
 ## Highlights
 
@@ -34,8 +41,8 @@ implemented but **not yet deployed**, so both run from the recorded corpus
 | Service | Role | Repo / path |
 |---------|------|-------------|
 | Weather | Forecast + classification | [MCP-Weather-Agent-with-LangChain](https://github.com/ankitpatil3003/MCP-Weather-Agent-with-LangChain) `mcp-server` |
-| Research | Live POIs (OpenTripMap + Wikipedia) | `services/research-mcp/` |
-| Dining | Live restaurants (OTM + Overpass) | `services/dining-mcp/` |
+| Research | Live POIs (Wikivoyage + Wikipedia, OpenTripMap fallback) | `services/research-mcp/` |
+| Dining | Live restaurants (Wikivoyage + OTM + Overpass) | `services/dining-mcp/` |
 
 Trippi LangGraph nodes are thin MCP clients. Seed data is used only as a degraded fallback.
 
@@ -54,7 +61,8 @@ Trippi LangGraph nodes are thin MCP clients. Seed data is used only as a degrade
 - Python 3.11+
 - Node 20+
 - Optional: Docker for Postgres/pgvector and Neo4j
-- Free [OpenTripMap](https://opentripmap.io/) key for Research and Dining services
+- Optional: free [OpenTripMap](https://dev.opentripmap.org/) key, which widens the
+  Research and Dining candidate pools but is not required
 - Deployed Weather MCP URL from your weather repo
 
 ## Quick start (local, stub MCPs)
@@ -90,10 +98,13 @@ VITE_PROXY_TARGET=http://127.0.0.1:8081 npm run dev   # frontend
 The fallback corpus is a recording of real API responses, not hand written data.
 
 ```bash
-export OPENTRIPMAP_API_KEY=...       # or services/research-mcp/.env
 python scripts/build_seed_corpus.py                  # all destinations
 python scripts/build_seed_corpus.py --cities "Paris" # one destination
+export OPENTRIPMAP_API_KEY=...       # optional, or services/research-mcp/.env
 ```
+
+No API key is required: Wikivoyage and Wikipedia carry the build. An OpenTripMap
+key only widens the restaurant candidate pool.
 
 A destination that fails to fetch is skipped, never filled in with a placeholder.
 
@@ -136,10 +147,20 @@ npm run lint
 npm run test:e2e                   # needs the API running with MCP_STUB=true
 ```
 
-Retrieval eval numbers are measured, not estimated. On the current three query
-NYC dataset, dense, dense+BM25, and full hybrid all score `recall@5 = 0.9167`,
-so the measured hybrid lift is `0.0`. The dataset is too small to separate the
-strategies; widening it is tracked for the next release.
+Retrieval eval numbers are measured, not estimated. On the current nine query
+dataset across New York, Paris and Rome:
+
+| Strategy | recall@5 |
+|----------|----------|
+| dense | 0.3889 |
+| dense + BM25 | **0.5556** |
+| full hybrid (+ graph expand) | 0.4815 |
+
+Hybrid beats dense alone by `0.2381` relative, but **dense+BM25 beats full hybrid**.
+Graph expansion over neighborhoods currently costs recall rather than adding it.
+That is a real measured result and not the outcome the design assumed, so the
+expansion step needs revisiting before hybrid is claimed as the best strategy.
+Nine queries is still a small dataset; treat the ordering as directional.
 
 ## Cloud deploy order
 

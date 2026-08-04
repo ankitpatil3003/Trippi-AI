@@ -1,4 +1,4 @@
-"""OpenTripMap + Wikipedia helpers for Research MCP."""
+"""Wikivoyage + OpenTripMap + Wikipedia helpers for Research MCP."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
+import wikivoyage
 
 OTM_BASE = "https://api.opentripmap.com/0.1/en/places"
 WIKI_SUMMARY = "https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
@@ -55,7 +56,164 @@ async def geocode_city(city: str) -> dict[str, Any]:
         }
 
 
+# Names are frequently in the local language, so English keywords alone leave most
+# European and Japanese sights unclassified.
+_INDOOR_WORDS = (
+    "museum", "musee", "musée", "museo", "museu", "muzeum", "gallery", "galerie",
+    "galleria", "cathedral", "cathedrale", "cathédrale", "catedral", "duomo",
+    "basilica", "basilique", "church", "chiesa", "iglesia", "eglise", "église",
+    "kirche", "chapel", "chapelle", "cappella", "palace", "palais", "palazzo",
+    "palacio", "theatre", "theater", "teatro", "théâtre", "opera", "aquarium",
+    "library", "biblioteca", "castle", "castello", "chateau", "château",
+    "temple", "shrine", "jinja", "synagogue", "mosque", "exhibition", "cinema",
+    "hall", "kunsthal", "rijksmuseum",
+)
+_OUTDOOR_WORDS = (
+    "park", "parc", "parco", "parque", "garden", "jardin", "giardino", "jardim",
+    "tuin", "gyoen", "koen", "square", "plaza", "piazza", "place ", "platz",
+    "bridge", "pont", "ponte", "puente", "brug", "tower", "tour ", "torre",
+    "beach", "playa", "market", "mercado", "mercato", "marche", "marché",
+    "cemetery", "promenade", "canal", "gracht", "hill", "island", "zoo",
+    "fountain", "fontaine", "fontana", "viewpoint", "monument", "arch", "arc de",
+    "pier", "quay", "forum", "colosseum", "colosseo", "stadium", "waterfront",
+)
+
+
+def _word_pattern(words: tuple[str, ...]) -> re.Pattern[str]:
+    """Match whole words only.
+
+    Substring matching mis-tags constantly: "research" contains "arch", so the
+    Schomburg Center reads as outdoor, and a rainy day would send you to a
+    library's front steps.
+    """
+    return re.compile(r"\b(?:" + "|".join(re.escape(w.strip()) for w in words) + r")\b")
+
+
+_INDOOR_RE = _word_pattern(_INDOOR_WORDS)
+_OUTDOOR_RE = _word_pattern(_OUTDOOR_WORDS)
+
+
+def _classify(text: str) -> str:
+    lowered = text.lower()
+    indoor = bool(_INDOOR_RE.search(lowered))
+    outdoor = bool(_OUTDOOR_RE.search(lowered))
+    if indoor and not outdoor:
+        return "indoor"
+    if outdoor and not indoor:
+        return "outdoor"
+    return "either"
+
+
+def _setting_from_text(name: str, description: str = "") -> str:
+    """Classify indoor vs outdoor, letting the name win.
+
+    Descriptions mention neighbouring features constantly, so "Jardin des
+    Tuileries" reads as both a garden and a palace and collapses to `either`.
+    The name is the more reliable signal, so only consult the description when
+    the name says nothing.
+    """
+    by_name = _classify(name)
+    if by_name != "either":
+        return by_name
+    return _classify(description)
+
+
 async def search_pois(
+    city: str,
+    preferences: str = "",
+    indoor_outdoor: str = "either",
+    limit: int = 12,
+) -> dict[str, Any]:
+    """Find notable sights for a city.
+
+    Wikivoyage is the primary source because it knows what a city is known for.
+    OpenTripMap `/radius` is a proximity index: it returns the nearest places to a
+    point and caps at 500 rows, so in a large city it never reaches the landmarks.
+    It stays as a fallback for places Wikivoyage does not cover.
+    """
+    listings = await wikivoyage.city_listings(city)
+    sights = [r for r in listings if r["kind"] in ("see", "do")]
+    if sights:
+        return await _pois_from_listings(city, sights, preferences, indoor_outdoor, limit)
+    return await _search_pois_otm(city, preferences, indoor_outdoor, limit)
+
+
+async def _pois_from_listings(
+    city: str,
+    sights: list[dict[str, Any]],
+    preferences: str,
+    indoor_outdoor: str,
+    limit: int,
+) -> dict[str, Any]:
+    # Describe a wider slice than requested. Indoor/outdoor filtering discards
+    # some, and the neighbourhood spread below needs enough districts to draw
+    # from, so a narrow pool would put every result on one street.
+    pool = sights[: max(limit * 6, 60)]
+    described = await wikivoyage.describe(pool)
+
+    pref = preferences.lower()
+    pref_words = [w for w in re.split(r"[^a-z]+", pref) if len(w) > 3]
+
+    pois: list[dict[str, Any]] = []
+    for row in pool:
+        name = row["name"]
+        info = described.get(name, {})
+        description = info.get("description", "")
+        setting = _setting_from_text(name, description)
+        if indoor_outdoor in ("indoor", "outdoor") and setting not in (indoor_outdoor, "either"):
+            continue
+        source_urls = [u for u in (info.get("url"), row.get("source_url")) if u]
+        score = wikivoyage.notability(row)
+        if pref_words:
+            haystack = f"{name} {description}".lower()
+            score += sum(1.0 for w in pref_words if w in haystack)
+        pois.append(
+            {
+                "id": f"wv_{row['wikidata'] or re.sub(r'[^a-z0-9]+', '_', name.lower())}",
+                "name": name,
+                "city": city,
+                "description": description,
+                "neighborhood": row.get("neighborhood", ""),
+                "setting": setting,
+                "tags": [t for t in (row.get("kind"), row.get("section")) if t],
+                "lat": row.get("lat"),
+                "lon": row.get("lon"),
+                "score": score,
+                "source_urls": source_urls,
+                "confidence": 0.85 if row.get("wikidata") else 0.6,
+            }
+        )
+
+    pois.sort(key=lambda p: p["score"], reverse=True)
+    pois = wikivoyage.diversify(pois, limit)
+    # Normalise to 0..1 so downstream fusion sees a comparable scale.
+    top = max((p["score"] for p in pois), default=1.0) or 1.0
+    for poi in pois:
+        poi["score"] = round(min(1.0, max(0.0, poi["score"] / top)), 4)
+
+    context = ""
+    sources = ["wikivoyage"]
+    if any(p["description"] for p in pois):
+        sources.append("wikipedia")
+    voyage = await wikivoyage_summary(city)
+    if "error" not in voyage and voyage.get("extract"):
+        context = str(voyage["extract"])
+
+    lats = [p["lat"] for p in pois if p["lat"] is not None]
+    lons = [p["lon"] for p in pois if p["lon"] is not None]
+    coordinates = (
+        {"lat": sum(lats) / len(lats), "lon": sum(lons) / len(lons)} if lats and lons else {}
+    )
+    return {
+        "city": city,
+        "coordinates": coordinates,
+        "pois": pois,
+        "city_context": context,
+        "sources": sources,
+    }
+
+
+async def _search_pois_otm(
     city: str,
     preferences: str = "",
     indoor_outdoor: str = "either",
@@ -74,7 +232,7 @@ async def search_pois(
     if "museum" in pref or "art" in pref:
         kinds = "museums,cultural"
     elif "park" in pref or "view" in pref or "outdoor" in pref:
-        kinds = "natural,view_points,gardens,bridges"
+        kinds = "natural,view_points,gardens_and_parks,bridges"
     elif "food" in pref or "market" in pref:
         kinds = "foods,shops"
 
