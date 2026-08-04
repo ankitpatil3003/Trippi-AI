@@ -51,7 +51,11 @@ mcp = FastMCP(
 
 @mcp.tool()
 async def search_restaurants(city: str, cuisine_prefs: str = "", limit: int = 16) -> dict:
-    """Search restaurants via OpenTripMap and OpenStreetMap Overpass."""
+    """Search restaurants via Wikivoyage listings, OpenTripMap and OpenStreetMap Overpass.
+
+    Price tiers come from the Wikivoyage price field and section heading. No API
+    key is required for the primary path.
+    """
     return await dining_client.search_restaurants(
         dining_client.sanitize_text(city, 100),
         dining_client.sanitize_text(cuisine_prefs, 120),

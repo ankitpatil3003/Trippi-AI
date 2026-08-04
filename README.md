@@ -150,16 +150,21 @@ npm run test:e2e                   # needs the API running with MCP_STUB=true
 Retrieval eval numbers are measured, not estimated. On the current nine query
 dataset across New York, Paris and Rome:
 
-| Strategy | recall@5 |
-|----------|----------|
-| dense | 0.3889 |
-| dense + BM25 | **0.5556** |
-| full hybrid (+ graph expand) | 0.4815 |
+| Strategy | recall@5 | avg neighborhoods in top 5 |
+|----------|----------|----------------------------|
+| dense | 0.3889 | 3.22 |
+| dense + BM25 | 0.5556 | 3.44 |
+| full hybrid (+ graph expand) | **0.5556** | **2.89** |
 
-Hybrid beats dense alone by `0.2381` relative, but **dense+BM25 beats full hybrid**.
-Graph expansion over neighborhoods currently costs recall rather than adding it.
-That is a real measured result and not the outcome the design assumed, so the
-expansion step needs revisiting before hybrid is claimed as the best strategy.
+Hybrid beats dense alone by `0.4286` relative. It ties dense+BM25 on recall and
+wins on route coherence, grouping the top five into fewer neighborhoods, which is
+what graph expansion is for.
+
+Getting there required a fix. The graph channel repeats its own seeds, so RRF
+counts them twice; seeding it from dense alone amplified the weakest channel and
+pulled hybrid *below* plain dense+BM25 (`0.4815`). Seeding from the dense+BM25
+consensus instead recovers the recall and tightens the spread.
+
 Nine queries is still a small dataset; treat the ordering as directional.
 
 ## Cloud deploy order

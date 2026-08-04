@@ -9,10 +9,36 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _content_block_text(items: list[Any]) -> str | None:
+    """Join an MCP content block list into its text payload.
+
+    A tool call returns `[{"type": "text", "text": "<json>"}]` rather than the
+    JSON itself. Returns None unless every element is a text block, so a tool
+    that genuinely returns a JSON array is left alone.
+    """
+    texts: list[str] = []
+    for item in items:
+        if isinstance(item, dict):
+            if item.get("type") != "text" or not isinstance(item.get("text"), str):
+                return None
+            texts.append(item["text"])
+            continue
+        text = getattr(item, "text", None)
+        if not isinstance(text, str) or getattr(item, "type", "text") != "text":
+            return None
+        texts.append(text)
+    return "".join(texts) if texts else None
+
+
 def coerce_tool_payload(result: Any) -> Any:
     if result is None:
         return None
-    if isinstance(result, (dict, list)):
+    if isinstance(result, list):
+        text = _content_block_text(result)
+        if text is not None:
+            return coerce_tool_payload(text)
+        return result
+    if isinstance(result, dict):
         return result
     if isinstance(result, str):
         text = result.strip()
