@@ -10,6 +10,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import get_settings
 from app.mcp.tools import call_mcp_tool
 from app.memory.fusion import hybrid_retrieve_restaurants
+from app.memory.seed_data import restaurants_for_city
 from app.schemas.trip import RestaurantCandidate
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,28 @@ async def _mcp_search_restaurants(city: str, cuisine_prefs: str) -> list[Restaur
     return out
 
 
+def _seed_candidates(city: str, query: str) -> list[RestaurantCandidate]:
+    """Relevance ranked seed candidates that still cover both dining tiers.
+
+    Retrieval alone returns the top matches for the query, which can exclude the
+    only fancy restaurant a city has. The dining node then reports no fancy pick
+    even though the corpus holds one, so top up the tiers from the full city list.
+    """
+    chosen = hybrid_retrieve_restaurants(city, query + " restaurant local cuisine", top_k=8)
+    have = {c.id for c in chosen}
+    for tier in ("local", "fancy"):
+        if any(c.price_tier == tier for c in chosen):
+            continue
+        extra = next(
+            (r for r in restaurants_for_city(city) if r.price_tier == tier and r.id not in have),
+            None,
+        )
+        if extra is not None:
+            chosen.append(extra)
+            have.add(extra.id)
+    return chosen
+
+
 async def fetch_restaurants(
     city: str,
     query: str,
@@ -84,11 +107,11 @@ async def fetch_restaurants(
     settings = get_settings()
     pref_text = " ".join(preferences or [])
     if settings.dining_mcp_stub or not settings.dining_mcp_url.strip():
-        return hybrid_retrieve_restaurants(city, query + " restaurant local cuisine", top_k=8), False
+        return _seed_candidates(city, query), False
 
     try:
         restaurants = await _mcp_search_restaurants(city, pref_text or "local")
         return restaurants, True
     except Exception as exc:
         logger.warning("Dining MCP failed (%s); using seed fallback", exc)
-        return hybrid_retrieve_restaurants(city, query + " restaurant local cuisine", top_k=8), False
+        return _seed_candidates(city, query), False
