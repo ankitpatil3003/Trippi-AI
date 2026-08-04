@@ -7,23 +7,10 @@ from pathlib import Path
 
 from app.memory.fusion import hybrid_retrieve_pois
 
-DATASET = [
-    {
-        "query": "indoor art museums",
-        "city": "New York",
-        "relevant_ids": ["poi_met", "poi_moma", "poi_gum"],
-    },
-    {
-        "query": "outdoor views and walks",
-        "city": "New York",
-        "relevant_ids": ["poi_central_park", "poi_brooklyn_bridge", "poi_high_line", "poi_statue"],
-    },
-    {
-        "query": "family science museum",
-        "city": "New York",
-        "relevant_ids": ["poi_amnh"],
-    },
-]
+# Labels live in dataset.json, not here. They were duplicated in both places and
+# drifted apart, so the committed run scored against ids the corpus no longer had.
+DATASET_PATH = Path(__file__).resolve().parent / "dataset.json"
+DATASET = json.loads(DATASET_PATH.read_text(encoding="utf-8"))
 
 
 def recall_at_k(retrieved_ids: list[str], relevant: list[str], k: int) -> float:
