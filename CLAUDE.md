@@ -67,6 +67,18 @@ a snapshot of real API responses produced by `scripts/build_seed_corpus.py`. An 
 city returns an empty list, and the graph reports that honestly. Empty is a correct
 answer; do not "improve" it with generated content.
 
+Discovery is Wikivoyage-led (`services/*/wikivoyage.py`). Its articles carry structured
+`see`/`eat` listings with coordinates, price bands and Wikidata ids, which is what makes
+"what is this city known for" answerable. OpenTripMap `/radius` cannot answer it: it
+returns the nearest places to a point, capped at 500 rows, so in a large city it never
+reaches the landmarks, and its `rate` field saturates. It remains a fallback only.
+
+Two non-obvious rules in that module. Only descend into subarticles that declare
+themselves part of the city via `{{IsPartOf}}`, or the crawl wanders (New York City
+reached Berkeley and filed Chez Panisse as a New York restaurant). And select results
+with `diversify()`, because ranking alone fills every slot from one well documented
+district.
+
 Every POI, restaurant, itinerary block, and dining pick carries `provenance`
 (`live` or `seed`, `None` for buffer blocks), surfaced in the UI.
 
@@ -114,6 +126,10 @@ The search window is capped by `extended_len = min(5, stay_len + 2)` in `fetch_f
 
 All are reached over streamable HTTP through `langchain_mcp_adapters.MultiServerMCPClient` (`app/mcp/tools.py`). Health checks use `/health`; tool calls use `/mcp`.
 
+`wikivoyage.py` is **vendored into both services**. Each deploys from its own flat
+directory with its own Dockerfile, so there is no shared import path. The canonical
+copy is `services/research-mcp/wikivoyage.py`; edit that one and copy it across.
+
 The API never holds `OPENWEATHER_API_KEY` or `OPENTRIPMAP_API_KEY`. Those live only on the MCP services.
 
 ## Conventions
@@ -134,7 +150,6 @@ These are wired in config but not implemented, so do not assume they work:
 - `app/memory/postgres.py` and `neo4j_client.py` are never imported. Retrieval runs entirely on the recorded corpus in `fusion.py`, despite `DATABASE_URL` and `NEO4J_URI` settings and the docker-compose services.
 - Langfuse is a dependency with three config fields and zero instrumentation.
 - `trip_store` is an in-memory dict, so trips do not survive restart and break across multiple workers or instances.
-- Research and Dining MCP services are implemented but undeployed, so every environment currently serves the recorded corpus. It covers New York only until `scripts/build_seed_corpus.py` is run with an OpenTripMap key.
-- The retrieval eval dataset is three queries over one city. All three strategies score identically (`recall@5 = 0.9167`, hybrid lift `0.0`), so it cannot currently justify the hybrid approach. Widen it before quoting any number.
-- Live OpenTripMap results have empty `description` and `neighborhood` (`research_client.py`). Empty neighborhoods silently disable `fusion.graph_expand_poi_indices`, so the live path loses graph expansion. `build_seed_corpus.py` works around this with Wikipedia enrichment; the live MCP path does not yet.
+- Research and Dining MCP services are implemented but undeployed, so every environment currently serves the recorded corpus. It covers ten destinations (New York, Paris, London, Tokyo, Rome, Barcelona, Amsterdam, Singapore, Dubai, San Francisco). Rebuild with `scripts/build_seed_corpus.py`, which needs no API key.
+- The retrieval eval is nine queries over three cities: `dense 0.3889`, `dense_bm25 0.5556`, `hybrid 0.4815`. Hybrid beats dense by `0.2381` relative, but **dense+BM25 beats full hybrid**, so graph expansion currently costs recall. Do not describe hybrid as the best strategy until that is resolved. Nine queries is still small; treat the ordering as directional.
 - `npm audit` reports two dev-server-only advisories via esbuild/vite 5. The fix is a breaking upgrade to vite 8, deferred out of the stabilization release.

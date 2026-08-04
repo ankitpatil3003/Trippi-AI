@@ -23,13 +23,15 @@ Smoke: `scripts/deploy-smoke-v2.ps1` and [RENDER_VERCEL.md](./RENDER_VERCEL.md).
 ## What the live demo actually serves
 
 Research and Dining are undeployed, so the deployed API runs both from the recorded
-corpus in `backend/app/memory/seed_corpus.json`. That corpus currently covers
-**New York only**. Any other destination returns no places, the Research and Dining
-chips show `skipped`, and the UI states that nothing could be sourced.
+corpus in `backend/app/memory/seed_corpus.json`. That corpus covers **ten
+destinations**: New York, Paris, London, Tokyo, Rome, Barcelona, Amsterdam,
+Singapore, Dubai and San Francisco. Any other destination returns no places, the
+Research and Dining chips show `skipped`, and the UI states that nothing could be
+sourced.
 
 This is intentional. Trippi does not invent places to fill the gap. See
 [INTEGRITY.md](../INTEGRITY.md). To widen coverage before the services are deployed,
-run `scripts/build_seed_corpus.py` with an OpenTripMap key.
+run `scripts/build_seed_corpus.py`, which needs no API key.
 
 ## Notes
 
