@@ -82,9 +82,28 @@ district.
 Every POI, restaurant, itinerary block, and dining pick carries `provenance`
 (`live` or `seed`, `None` for buffer blocks), surfaced in the UI.
 
+### Hybrid retrieval: seed the graph channel from the consensus
+
+`fusion.hybrid_retrieve_pois` fuses three ranked lists with RRF: dense, BM25, and a
+graph expansion over neighborhoods. The graph list **repeats its own seeds**, so RRF
+counts those seeds twice. Seed it from dense alone and you amplify the weakest
+channel, which measurably pulled hybrid below plain dense+BM25 (`0.4815` against
+`0.5556`). Seeding from the dense+BM25 fusion instead recovers the recall.
+
+Expanded neighbors must also be ordered by `relevance`. RRF positions are nearly
+equal at `k=60`, so an unranked neighbor at rank 4 votes almost as hard as the top
+hit. `tests/test_fusion.py` guards both properties.
+
 ### MCP degradation contract
 
 Every MCP client (`app/mcp/client.py`, `research.py`, `dining_mcp.py`) returns `(data, available: bool)` and never raises into the graph. On failure it logs a warning and falls back to `app/memory/fusion.py` retrieval over the recorded corpus. Preserve this shape when adding services: the graph assumes it cannot fail.
+
+A tool call returns MCP **content blocks**, `[{"type": "text", "text": "<json>"}]`,
+not the JSON itself. `tools.coerce_tool_payload` unwraps them. It previously passed
+any list straight through, so every live call looked malformed and fell back to seed
+while looking completely healthy. Because degradation is silent by design, a plan
+that looks right is not evidence the live path works: check `provenance == "live"`
+on a city outside the corpus.
 
 Chip status distinguishes three cases in the researcher and dining nodes:
 
@@ -151,5 +170,5 @@ These are wired in config but not implemented, so do not assume they work:
 - Langfuse is a dependency with three config fields and zero instrumentation.
 - `trip_store` is an in-memory dict, so trips do not survive restart and break across multiple workers or instances.
 - Research and Dining MCP services are implemented but undeployed, so every environment currently serves the recorded corpus. It covers ten destinations (New York, Paris, London, Tokyo, Rome, Barcelona, Amsterdam, Singapore, Dubai, San Francisco). Rebuild with `scripts/build_seed_corpus.py`, which needs no API key.
-- The retrieval eval is nine queries over three cities: `dense 0.3889`, `dense_bm25 0.5556`, `hybrid 0.4815`. Hybrid beats dense by `0.2381` relative, but **dense+BM25 beats full hybrid**, so graph expansion currently costs recall. Do not describe hybrid as the best strategy until that is resolved. Nine queries is still small; treat the ordering as directional.
+- The retrieval eval is nine queries over three cities: `dense 0.3889`, `dense_bm25 0.5556`, `hybrid 0.5556`. Hybrid beats dense by `0.4286` relative, ties dense+BM25 on recall, and wins on route coherence (2.89 vs 3.44 neighborhoods in the top five). Nine queries is still small; treat the ordering as directional.
 - `npm audit` reports two dev-server-only advisories via esbuild/vite 5. The fix is a breaking upgrade to vite 8, deferred out of the stabilization release.
