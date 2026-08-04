@@ -51,7 +51,11 @@ mcp = FastMCP(
 
 @mcp.tool()
 async def search_pois(city: str, preferences: str = "", indoor_outdoor: str = "either", limit: int = 12) -> dict:
-    """Search live POIs for a city via OpenTripMap and attach Wikipedia city context."""
+    """Search notable POIs for a city via Wikivoyage listings, described from Wikipedia.
+
+    Falls back to OpenTripMap for cities Wikivoyage does not cover. No API key is
+    required for the primary path.
+    """
     city = research_client.sanitize_text(city, 100)
     preferences = research_client.sanitize_text(preferences, 200)
     return await research_client.search_pois(city, preferences, indoor_outdoor, limit=limit)

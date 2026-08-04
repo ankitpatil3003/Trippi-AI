@@ -1,4 +1,11 @@
-from app.memory.fusion import bm25_scores, dense_scores, hybrid_retrieve_pois, reciprocal_rank_fusion
+from app.memory.fusion import (
+    bm25_scores,
+    dense_scores,
+    graph_expand_poi_indices,
+    hybrid_retrieve_pois,
+    reciprocal_rank_fusion,
+)
+from app.memory.seed_data import pois_for_city
 
 
 def test_dense_and_bm25_nonzero():
@@ -26,3 +33,33 @@ def test_hybrid_nyc_returns_pois():
         any(word in text for word in ("museum", "art", "gallery", "exhibit"))
         for text in haystacks
     )
+
+
+def test_graph_expand_orders_neighbours_by_relevance():
+    """Expanded neighbours must carry a query signal, not arrive in corpus order.
+
+    RRF weights positions almost equally at k=60, so an unranked neighbour at
+    rank 4 votes nearly as hard as the top hit.
+    """
+    pois = pois_for_city("New York")
+    relevance = [float(i) for i in range(len(pois))]  # last POI is most relevant
+    seeds = [0]
+    expanded = graph_expand_poi_indices(pois, seeds, limit=len(pois), relevance=relevance)
+
+    assert expanded[0] == 0, "seeds come first"
+    neighbours = expanded[1:]
+    assert neighbours == sorted(neighbours, key=lambda i: relevance[i], reverse=True)
+
+
+def test_hybrid_is_not_worse_than_dense_bm25():
+    """Graph expansion must not cost recall.
+
+    It previously did: the graph list repeats its seeds, so seeding it from dense
+    alone made RRF count the weakest channel twice and dragged hybrid below plain
+    dense+BM25.
+    """
+    from evals.retrieval.run_eval import run
+
+    report = run()["strategies"]
+    assert report["hybrid"]["recall@5"] >= report["dense_bm25"]["recall@5"]
+    assert report["hybrid"]["recall@5"] > report["dense"]["recall@5"]

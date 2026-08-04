@@ -29,11 +29,11 @@
       ]
     },
     "hybrid": {
-      "recall@5": 0.4815,
+      "recall@5": 0.5556,
       "per_query": [
         1.0,
-        0.6666666666666666,
-        0.0,
+        1.0,
+        0.3333333333333333,
         0.75,
         0.25,
         0.0,
@@ -45,5 +45,5 @@
   },
   "dataset_size": 9,
   "hybrid_neighborhood_count_top5": 2,
-  "hybrid_vs_dense_recall_lift": 0.2381
+  "hybrid_vs_dense_recall_lift": 0.4286
 }

@@ -88,22 +88,28 @@ def _top_indices(scores: list[float], top_k: int) -> list[int]:
     return indexed[:top_k]
 
 
-def graph_expand_poi_indices(pois: list[POI], seed_indices: list[int], limit: int = 8) -> list[int]:
+def graph_expand_poi_indices(
+    pois: list[POI],
+    seed_indices: list[int],
+    limit: int = 8,
+    relevance: list[float] | None = None,
+) -> list[int]:
+    """Seeds first, then other POIs in the same or a linked neighborhood.
+
+    `relevance` orders the expanded neighbours. Without it they arrive in corpus
+    order, which hands RRF a ranking that carries no query signal at all: a
+    neighbourhood-mate at rank 4 scores 1/64 against the top hit's 1/61.
+    """
     neighborhoods = {pois[i].neighborhood for i in seed_indices if pois[i].neighborhood}
-    expanded = set(seed_indices)
     related: set[str] = set()
     for n in neighborhoods:
         related.add(n)
         related.update(NEIGHBORHOOD_LINKS.get(n, []))
-    for i, poi in enumerate(pois):
-        if poi.neighborhood in related:
-            expanded.add(i)
-    # Prefer seeds first, then neighbors
-    ordered = list(seed_indices)
-    for i in expanded:
-        if i not in ordered:
-            ordered.append(i)
-    return ordered[:limit]
+    seeds = list(seed_indices)
+    cluster = [i for i, poi in enumerate(pois) if poi.neighborhood in related and i not in seeds]
+    if relevance is not None:
+        cluster.sort(key=lambda i: relevance[i], reverse=True)
+    return (seeds + cluster)[:limit]
 
 
 def hybrid_retrieve_pois(
@@ -116,6 +122,8 @@ def hybrid_retrieve_pois(
     docs = [f"{p.name} {p.description} {' '.join(p.tags)} {p.neighborhood}" for p in pois]
     dense = dense_scores(query, docs)
     sparse = bm25_scores(query, docs)
+    sparse_max = max(sparse) if sparse else 0
+    relevance = [0.6 * dense[i] + 0.4 * (sparse[i] / (sparse_max or 1)) for i in range(len(pois))]
 
     if strategy == "dense":
         idxs = _top_indices(dense, top_k)
@@ -125,14 +133,21 @@ def hybrid_retrieve_pois(
     else:
         dense_top = _top_indices(dense, top_k)
         sparse_top = _top_indices(sparse, top_k)
-        graph_top = graph_expand_poi_indices(pois, dense_top[:3], limit=top_k)
+        # Seed expansion from the dense+BM25 consensus, not from dense alone.
+        # The graph list repeats its seeds, so RRF counts them twice; seeding it
+        # from dense amplified the weakest channel and pulled hybrid below plain
+        # dense+BM25. Seeding from the consensus recovers that recall and tightens
+        # neighbourhood spread at the same time. See evals/retrieval/results.json.
+        base = reciprocal_rank_fusion([dense_top, sparse_top])
+        seeds = sorted(base.keys(), key=lambda i: base[i], reverse=True)[:3]
+        graph_top = graph_expand_poi_indices(pois, seeds, limit=top_k, relevance=relevance)
         fused = reciprocal_rank_fusion([dense_top, sparse_top, graph_top])
         idxs = sorted(fused.keys(), key=lambda i: fused[i], reverse=True)[:top_k]
 
     results: list[POI] = []
     for i in idxs:
         poi = pois[i].model_copy(deep=True)
-        poi.score = float(0.6 * dense[i] + 0.4 * (sparse[i] / (max(sparse) or 1)))
+        poi.score = float(relevance[i])
         results.append(poi)
     return results
 
